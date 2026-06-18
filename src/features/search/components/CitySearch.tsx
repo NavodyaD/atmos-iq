@@ -26,6 +26,38 @@ export function CitySearch() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (query.length >= 2) {
+        setIsLoading(true);
+        const cities = await searchCities(query);
+        setResults(cities);
+        setIsLoading(false);
+        setIsOpen(true);
+      } else {
+        setResults([]);
+        setIsOpen(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [query]);
+
+  const handleSelectCity = (city: City) => {
+    setQuery("");
+    setIsOpen(false);
+    
+    // Using URL Search Params to update global state
+    const url = new URL(window.location.href);
+    url.searchParams.set("lat", city.latitude.toString());
+    url.searchParams.set("lon", city.longitude.toString());
+    url.searchParams.set("city", city.name);
+    window.history.pushState({}, "", url.toString());
+    
+    // Trigger a custom event to notify components that the city changed
+    window.dispatchEvent(new Event("citychange"));
+  };
+
   return (
     <div className="relative w-full" ref={wrapperRef}>
       <div className="relative">
@@ -55,7 +87,7 @@ export function CitySearch() {
             {results.map((city) => (
               <li
                 key={city.id}
-                onClick={() => null}
+                onClick={() => handleSelectCity(city)}
                 className="relative flex cursor-default select-none items-center rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
               >
                 <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
