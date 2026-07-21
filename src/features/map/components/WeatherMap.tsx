@@ -20,11 +20,51 @@ const icon = L.icon({
   shadowSize: [41, 41]
 });
 
+// Component to dynamically update map center when coordinates change
+function MapUpdater({ center }: { center: [number, number] }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center, map.getZoom());
+  }, [center, map]);
+  return null;
+}
+
 export default function WeatherMap() {
   const searchParams = useSearchParams();
   const [position, setPosition] = useState<[number, number]>([51.5085, -0.1257]); // Default London
   const [cityName, setCityName] = useState("London");
   const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    
+    const updatePosition = () => {
+      const lat = searchParams.get("lat");
+      const lon = searchParams.get("lon");
+      const city = searchParams.get("city");
+      
+      if (lat && lon) {
+        setPosition([parseFloat(lat), parseFloat(lon)]);
+      }
+      if (city) {
+        setCityName(city);
+      }
+    };
+
+    updatePosition();
+    
+    // Listen for custom event from CitySearch
+    window.addEventListener("citychange", updatePosition);
+    return () => window.removeEventListener("citychange", updatePosition);
+  }, [searchParams]);
+
+  if (!mounted) {
+    return (
+      <Card className="h-[600px] w-full flex items-center justify-center bg-muted/20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </Card>
+    );
+  }
 
   return (
     <Card className="overflow-hidden border-none shadow-lg h-[600px] w-full z-0 relative rounded-xl">
@@ -48,6 +88,7 @@ export default function WeatherMap() {
             <div className="text-sm text-muted-foreground">Lat: {position[0]}, Lon: {position[1]}</div>
           </Popup>
         </Marker>
+        <MapUpdater center={position} />
       </MapContainer>
     </Card>
   );

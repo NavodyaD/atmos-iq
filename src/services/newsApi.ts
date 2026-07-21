@@ -1,20 +1,34 @@
 import { NewsApiResponse } from "@/types/news";
 
-const NEWS_API_KEY = "NEWS_API_KEY";
-const NEWS_API_URL = "NEWS_API_URL";
+const NEWS_API_KEY = process.env.NEWS_API_KEY;
+const NEWS_API_URL = process.env.NEWS_API_URL ?? "https://newsapi.org/v2/everything";
 
 export async function getWeatherNews(): Promise<NewsApiResponse | null> {
   const query = "weather OR climate OR environment OR storms";
-  
+
+  if (!NEWS_API_KEY) {
+    console.warn("NEWS_API_KEY is not configured");
+    return getMockNews();
+  }
+
   try {
-    const res = await fetch(
-      `${NEWS_API_URL}?q=${encodeURIComponent(query)}&sortBy=publishedAt&language=en&apiKey=${NEWS_API_KEY}`,
-      { next: { revalidate: 3600 } } // Cache for 1 hour
-    );
+    const params = new URLSearchParams({
+      q: query,
+      sortBy: "publishedAt",
+      language: "en",
+    });
+
+    const res = await fetch(`${NEWS_API_URL}?${params}`, {
+      headers: {
+        "X-Api-Key": NEWS_API_KEY,
+      },
+      next: {
+        revalidate: 3600,
+      },
+    });
 
     if (!res.ok) {
       console.error("Failed to fetch news:", await res.text());
-      // Return mock data for development if the API key is invalid or not set
       return getMockNews();
     }
 
